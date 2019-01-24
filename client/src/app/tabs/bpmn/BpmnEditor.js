@@ -354,6 +354,12 @@ export class BpmnEditor extends CachedComponent {
       zoom: true
     };
 
+    // ensure backwards compatibility
+    // https://github.com/camunda/camunda-modeler/commit/78357e3ed9e6e0255ac8225fbdf451a90457e8bf
+    newState.bpmn = true;
+    newState.editable = true;
+    newState.elementsSelected = !!selectionLength;
+
     const contextMenu = getBpmnContextMenu(newState);
 
     const editMenu = getBpmnEditMenu(newState);
@@ -675,18 +681,34 @@ export class BpmnEditor extends CachedComponent {
     );
   }
 
-  static createCachedState() {
+  static createCachedState(props) {
     const {
       name,
       version
     } = Metadata;
 
+    const { getPlugins } = props;
+
+    const moddleExtensions = getPlugins('bpmn.modeler.moddleExtension')
+      .reduce((moddleExtensions, moddleExtension) => {
+        const name = moddleExtension.name.toLowerCase();
+
+        return {
+          ...moddleExtensions,
+          [ name ]: moddleExtension
+        };
+      }, {});
+
     const modeler = new CamundaBpmnModeler({
-      position: 'absolute',
+      additionalModules: [
+        ...getPlugins('bpmn.modeler.additionalModules')
+      ],
       exporter: {
         name,
         version
-      }
+      },
+      moddleExtensions,
+      position: 'absolute'
     });
 
     const commandStack = modeler.get('commandStack');

@@ -315,6 +315,13 @@ export class DmnEditor extends CachedComponent {
       editMenu = getDmnLiteralExpressionEditMenu(newState);
     }
 
+    // ensure backwards compatibility
+    // https://github.com/camunda/camunda-modeler/commit/78357e3ed9e6e0255ac8225fbdf451a90457e8bf
+    newState.dmn = true;
+    newState.editable = true;
+    newState.elementsSelected = !!selectionLength;
+    newState.activeEditor = activeView.type;
+
     const windowMenu = getDmnWindowMenu(newState);
 
     if (typeof onChanged === 'function') {

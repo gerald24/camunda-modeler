@@ -56,8 +56,8 @@ global.metaData = {
 // get directory of executable
 var appPath = path.dirname(app.getPath('exe'));
 
-app.plugins = new Plugins({
-  paths: [
+const plugins = app.plugins = new Plugins({
+  directories: [
     app.getPath('userData'),
     appPath
   ]
@@ -66,7 +66,7 @@ app.plugins = new Plugins({
 // set global modeler directory
 global.modelerDirectory = appPath;
 
-var menu = new Menu(process.platform);
+const menu = new Menu(process.platform, plugins);
 
 // bootstrap filesystem
 var fileSystem = new FileSystem();
@@ -315,7 +315,12 @@ app.createEditorWindow = function() {
   var windowOptions = {
     resizable: true,
     show: false,
-    title: 'Camunda Modeler'
+    title: 'Camunda Modeler',
+    webPreferences: {
+
+      // TODO(philippfromme): what are the implications?
+      webSecurity: false
+    }
   };
 
   if (process.platform === 'linux') {

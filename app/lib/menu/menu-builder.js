@@ -16,8 +16,8 @@ const {
 
 
 class MenuBuilder {
-  constructor(options) {
-    this.options = merge({
+  constructor(options, plugins) {
+    this.options = ensureBackwardsCompatibility(merge({
       appName: app.name,
       state: {
         save: false,
@@ -26,7 +26,9 @@ class MenuBuilder {
         devtools: false
       },
       providers: {}
-    }, options);
+    }, options));
+
+    this.plugins = plugins;
 
     if (this.options.template) {
       this.menu = Menu.buildFromTemplate(this.options.template);
@@ -58,6 +60,7 @@ class MenuBuilder {
     }
 
     this.appendWindowMenu();
+    this.appendPluginsMenu();
     this.appendHelpMenu();
 
     return this;
@@ -400,6 +403,63 @@ class MenuBuilder {
     return submenuTemplate;
   }
 
+  appendPluginsMenu() {
+    const pluginDescriptors = this.plugins.getAllPluginDescriptors();
+
+    if (!pluginDescriptors.length) {
+      return;
+    }
+
+    const submenuTemplate = pluginDescriptors
+      .map(pluginDescriptor => {
+        let label = pluginDescriptor.name;
+
+        if (pluginDescriptor.error) {
+          label = label.concat(' <error>');
+        }
+
+        const menuItemDescriptor = {
+          label: label,
+          enabled: false
+        };
+
+        if (pluginDescriptor.menu) {
+
+          try {
+            const menuEntries = pluginDescriptor.menu(app, this.options.state);
+
+            menuItemDescriptor.enabled = true;
+            menuItemDescriptor.submenu = Menu.buildFromTemplate(
+              menuEntries.map(menuDescriptor => {
+                return new MenuItem({
+                  label: menuDescriptor.label,
+                  accelerator: menuDescriptor.accelerator,
+                  enabled: menuDescriptor.enabled(),
+                  click: menuDescriptor.action,
+                  submenu: menuDescriptor.submenu
+                });
+              })
+            );
+          } catch (e) {
+            console.error(e);
+            menuItemDescriptor.label = menuItemDescriptor.label.concat(' <error>');
+            menuItemDescriptor.enabled = false;
+          }
+        }
+
+        return [ new MenuItem(menuItemDescriptor) ];
+      })
+      .reduce((menuItemDescriptors, menuItemDescriptor) => menuItemDescriptor.concat(menuItemDescriptors));
+
+
+    this.menu.append(new MenuItem({
+      label: 'Plugins',
+      submenu: Menu.buildFromTemplate(submenuTemplate)
+    }));
+
+    return this;
+  }
+
   appendHelpMenu() {
     const submenuTemplate = this.getHelpSubmenuTemplate();
 
@@ -543,4 +603,47 @@ function canSwitchTab(state) {
 
 function canCloseTab(state) {
   return Boolean(state.tabsCount);
+}
+
+/**
+ * Ensure backwards compatibility by mapping new state properties to old ones.
+ *
+ * Properties have been renamed as part of:
+ * https://github.com/camunda/camunda-modeler/commit/78357e3ed9e6e0255ac8225fbdf451a90457e8bf
+ *
+ * @param {Object} options - Options.
+ * @param {Object} [options.state] - State.
+ *
+ * @returns {Object}
+ */
+function ensureBackwardsCompatibility(options) {
+  const { state } = options;
+
+  if (!state) {
+    return options;
+  }
+
+  return merge({
+    state: {
+      dmn: false,
+      activeEditor: null,
+      cmmn: false,
+      bpmn: false,
+      undo: false,
+      redo: false,
+      editable: false,
+      copy: false,
+      paste: false,
+      searchable: false,
+      zoom: false,
+      save: false,
+      close: false,
+      elementsSelected: false,
+      dmnRuleEditing: state.elementsSelected,
+      dmnClauseEditing: state.elementsSelected,
+      exportAs: false,
+      development: app.developmentMode,
+      devtools: false
+    }
+  }, options);
 }

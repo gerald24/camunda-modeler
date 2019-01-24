@@ -9,10 +9,16 @@ const requirePlatform = require('../util/require-platform');
 
 
 class Menu {
+
   /**
-   * @param {string} platform
+   * Constructor.
+   *
+   * @param {String} platform - Platform.
+   * @param {Object} plugins - Plugins instance.
    */
-  constructor(platform) {
+  constructor(platform, plugins) {
+    this.plugins = plugins;
+
     this.state = {};
     this.providers = {};
 
@@ -87,6 +93,8 @@ class Menu {
   }
 
   updateState(newState = this.state) {
+    debugger
+
     if (!this.state.hasOwnProperty('devtools') && app.mainWindow) {
       const isDevToolsOpened = app.mainWindow.isDevToolsOpened();
 
@@ -99,13 +107,14 @@ class Menu {
   }
 
   rebuildMenu() {
-    const state = this.state,
-          providers = this.providers;
+    const plugins = this.plugins,
+          providers = this.providers,
+          state = this.state;
 
     const menu = new this.MenuBuilder({
-      state,
-      providers
-    }).build();
+      providers,
+      state
+    }, plugins).build();
 
     menu.setMenu();
   }
